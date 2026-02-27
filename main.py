@@ -1,9 +1,16 @@
+import logging
 import time
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NHL Explorer")
 templates = Jinja2Templates(directory="templates")
@@ -56,6 +63,9 @@ STAT_CATEGORIES = {
     "shots": "Shots",
 }
 
+VALID_CONFERENCES = {"All", "Eastern", "Western"}
+VALID_LIMITS = {10, 20, 30, 50}
+
 
 async def fetch(url: str, ttl: int = 300) -> dict:
     now = time.time()
@@ -67,6 +77,20 @@ async def fetch(url: str, ttl: int = 300) -> dict:
         data = r.json()
     _cache[url] = {"data": data, "ts": now}
     return data
+
+
+def _api_error(e: Exception) -> str:
+    if isinstance(e, httpx.TimeoutException):
+        logger.warning("NHL API request timed out")
+        return "The request timed out. Please try again."
+    if isinstance(e, httpx.HTTPStatusError):
+        logger.error("NHL API returned HTTP %s", e.response.status_code)
+        return f"NHL API error ({e.response.status_code}). Try again later."
+    if isinstance(e, httpx.RequestError):
+        logger.error("Network error contacting NHL API: %s", e)
+        return "A network error occurred."
+    logger.exception("Unexpected error in NHL API call")
+    return "An unexpected error occurred."
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -86,7 +110,7 @@ async def scores(request: Request):
             games = week[0].get("games", [])
             date = week[0].get("date", "")
     except Exception as e:
-        error = str(e)
+        error = _api_error(e)
     return templates.TemplateResponse(
         "partials/scores.html",
         {"request": request, "games": games, "date": date, "error": error},
@@ -95,6 +119,8 @@ async def scores(request: Request):
 
 @app.get("/standings", response_class=HTMLResponse)
 async def standings(request: Request, conference: str = "All"):
+    if conference not in VALID_CONFERENCES:
+        conference = "All"
     error = None
     rows: list = []
     try:
@@ -104,7 +130,7 @@ async def standings(request: Request, conference: str = "All"):
             rows = [t for t in rows if t.get("conferenceName") == conference]
         rows.sort(key=lambda t: (t.get("points", 0), t.get("wins", 0)), reverse=True)
     except Exception as e:
-        error = str(e)
+        error = _api_error(e)
     return templates.TemplateResponse(
         "partials/standings.html",
         {"request": request, "standings": rows, "conference": conference, "error": error},
@@ -113,6 +139,10 @@ async def standings(request: Request, conference: str = "All"):
 
 @app.get("/leaders", response_class=HTMLResponse)
 async def leaders(request: Request, category: str = "points", limit: int = 20):
+    if category not in STAT_CATEGORIES:
+        category = "points"
+    if limit not in VALID_LIMITS:
+        limit = 20
     error = None
     players: list = []
     try:
@@ -121,7 +151,7 @@ async def leaders(request: Request, category: str = "points", limit: int = 20):
         )
         players = data.get(category, [])
     except Exception as e:
-        error = str(e)
+        error = _api_error(e)
     return templates.TemplateResponse(
         "partials/leaders.html",
         {
@@ -137,6 +167,8 @@ async def leaders(request: Request, category: str = "points", limit: int = 20):
 
 @app.get("/roster", response_class=HTMLResponse)
 async def roster(request: Request, team: str = "BOS"):
+    if team not in TEAMS:
+        team = "BOS"
     error = None
     forwards: list = []
     defensemen: list = []
@@ -147,7 +179,7 @@ async def roster(request: Request, team: str = "BOS"):
         defensemen = data.get("defensemen", [])
         goalies = data.get("goalies", [])
     except Exception as e:
-        error = str(e)
+        error = _api_error(e)
     return templates.TemplateResponse(
         "partials/roster.html",
         {
