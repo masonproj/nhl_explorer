@@ -1,7 +1,7 @@
 Run the test suite and report results:
 
 ```bash
-pytest tests/ -v
+python3 -m pytest tests/ -v
 ```
 
 All 15 tests should pass. If any fail, read the failure output carefully, identify the
