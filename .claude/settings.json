@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pytest*)",
+      "Bash(uvicorn*)",
+      "Bash(pip install -r*)"
+    ]
+  }
+}
