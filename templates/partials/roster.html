@@ -1,0 +1,95 @@
+<div>
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-2xl font-bold">Team Roster</h2>
+    <select name="team"
+            hx-get="/roster" hx-target="#content" hx-swap="innerHTML"
+            hx-trigger="change"
+            class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm
+                   text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer max-w-xs">
+      {% for abbrev, name in teams.items() | sort %}
+      <option value="{{ abbrev }}" {% if abbrev == team %}selected{% endif %}>
+        {{ abbrev }} – {{ name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {% if error %}
+  <div class="bg-red-950 border border-red-800 rounded-xl p-4 text-red-300 text-sm">{{ error }}</div>
+
+  {% else %}
+
+  {% for group_label, group_players in [
+      ('Forwards', forwards),
+      ('Defensemen', defensemen),
+      ('Goalies', goalies)
+  ] %}
+  {% if group_players %}
+  <div class="mb-8">
+    <div class="flex items-center gap-3 mb-3">
+      <span class="h-px flex-1 bg-slate-800"></span>
+      <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest">{{ group_label }}</h3>
+      <span class="h-px flex-1 bg-slate-800"></span>
+    </div>
+
+    <div class="overflow-x-auto rounded-xl border border-slate-800">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider">
+          <tr>
+            <th class="px-4 py-3 text-center w-12">#</th>
+            <th class="px-4 py-3 text-left" colspan="2">Player</th>
+            <th class="px-4 py-3 text-center">Pos</th>
+            <th class="px-4 py-3 text-center hidden sm:table-cell">S/C</th>
+            <th class="px-4 py-3 text-center hidden md:table-cell">Height</th>
+            <th class="px-4 py-3 text-center hidden md:table-cell">Weight</th>
+            <th class="px-4 py-3 text-left hidden lg:table-cell">Birthdate</th>
+            <th class="px-4 py-3 text-left hidden lg:table-cell">Birthplace</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60">
+          {% for p in group_players %}
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="px-4 py-3 text-center text-slate-400 font-mono font-medium">
+              {{ p.sweaterNumber }}
+            </td>
+            <td class="px-2 py-2 w-12">
+              {% if p.headshot %}
+              <img src="{{ p.headshot }}" alt=""
+                   class="h-9 w-9 rounded-full object-cover ring-1 ring-slate-700" />
+              {% else %}
+              <div class="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center text-slate-500 text-xs">
+                ?
+              </div>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 font-medium">
+              {{ p.firstName.default }} {{ p.lastName.default }}
+            </td>
+            <td class="px-4 py-3 text-center text-slate-400">{{ p.positionCode }}</td>
+            <td class="px-4 py-3 text-center text-slate-400 hidden sm:table-cell">
+              {{ p.shootsCatches }}
+            </td>
+            <td class="px-4 py-3 text-center text-slate-300 hidden md:table-cell">
+              {% if p.heightInInches %}
+              {{ (p.heightInInches / 12) | int }}'{{ p.heightInInches % 12 }}"
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-center text-slate-300 hidden md:table-cell">
+              {% if p.weightInPounds %}{{ p.weightInPounds }} lbs{% endif %}
+            </td>
+            <td class="px-4 py-3 text-slate-400 hidden lg:table-cell">{{ p.birthDate }}</td>
+            <td class="px-4 py-3 text-slate-400 hidden lg:table-cell">
+              {{ p.birthCity.default if p.birthCity else '' }}
+              {% if p.birthStateProvince %}, {{ p.birthStateProvince.default }}{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  {% endif %}
+</div>
