@@ -1,6 +1,8 @@
 """Tests for NHL Explorer endpoints."""
 from unittest.mock import AsyncMock, patch
 
+import main
+
 import httpx
 import pytest
 
@@ -263,3 +265,66 @@ async def test_roster_network_error_shows_error():
         r = await _get("/roster")
     assert r.status_code == 200
     assert "error" in r.text.lower()
+
+
+# ---------------------------------------------------------------------------
+# /odds
+# ---------------------------------------------------------------------------
+
+ODDS_DATA = [
+    {
+        "id": "abc123",
+        "sport_key": "icehockey_nhl",
+        "commence_time": "2026-02-27T01:00:00Z",
+        "home_team": "Boston Bruins",
+        "away_team": "Toronto Maple Leafs",
+        "bookmakers": [
+            {
+                "key": "draftkings",
+                "title": "DraftKings",
+                "markets": [
+                    {
+                        "key": "h2h",
+                        "outcomes": [
+                            {"name": "Boston Bruins", "price": -165},
+                            {"name": "Toronto Maple Leafs", "price": 140},
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+]
+
+
+async def test_odds_happy_path():
+    with patch("main.fetch", new_callable=AsyncMock, return_value=ODDS_DATA):
+        with patch.object(main, "ODDS_API_KEY", "test-key"):
+            r = await _get("/odds")
+    assert r.status_code == 200
+    assert "Toronto" in r.text
+    assert "Boston" in r.text
+    assert "DraftKings" in r.text
+
+
+async def test_odds_no_games():
+    with patch("main.fetch", new_callable=AsyncMock, return_value=[]):
+        with patch.object(main, "ODDS_API_KEY", "test-key"):
+            r = await _get("/odds")
+    assert r.status_code == 200
+    assert "No upcoming" in r.text
+
+
+async def test_odds_no_api_key():
+    with patch.object(main, "ODDS_API_KEY", ""):
+        r = await _get("/odds")
+    assert r.status_code == 200
+    assert "API key required" in r.text
+
+
+async def test_odds_timeout_shows_error():
+    with patch("main.fetch", new_callable=AsyncMock, side_effect=httpx.TimeoutException("t/o")):
+        with patch.object(main, "ODDS_API_KEY", "test-key"):
+            r = await _get("/odds")
+    assert r.status_code == 200
+    assert "timed out" in r.text.lower()
