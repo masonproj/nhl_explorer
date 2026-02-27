@@ -1,0 +1,100 @@
+<div>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-2xl font-bold">Moneyline Odds</h2>
+      <p class="text-slate-400 text-sm mt-0.5">NHL · American odds · via The Odds API</p>
+    </div>
+    <button class="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700
+                   text-slate-300 hover:text-white rounded-lg transition-colors"
+            hx-get="/odds" hx-target="#content" hx-swap="innerHTML">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0
+             0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+
+  {% if no_key %}
+  <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 text-slate-300 text-sm max-w-lg">
+    <p class="font-semibold text-slate-100 mb-2">API key required</p>
+    <p class="mb-3">Set the <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300">ODDS_API_KEY</code>
+      environment variable to your free key from
+      <a href="https://the-odds-api.com" class="text-blue-400 hover:underline" target="_blank" rel="noopener">the-odds-api.com</a>
+      (500 free requests/month), then restart the server.
+    </p>
+    <pre class="bg-slate-800 rounded-lg px-4 py-3 text-xs text-slate-300 overflow-x-auto">export ODDS_API_KEY=your_key_here
+uvicorn main:app --reload</pre>
+  </div>
+
+  {% elif error %}
+  <div class="bg-red-950 border border-red-800 rounded-xl p-4 text-red-300 text-sm">
+    {{ error }}
+  </div>
+
+  {% elif not games %}
+  <div class="text-center py-20 text-slate-500">
+    <div class="text-5xl mb-4 select-none">📊</div>
+    <p class="text-lg">No upcoming games with odds available.</p>
+  </div>
+
+  {% else %}
+  <div class="grid gap-3">
+    {% for game in games %}
+    {% set book = game.bookmakers[0] if game.bookmakers else none %}
+    {% if book %}
+      {% set outcomes = book.markets[0].outcomes if book.markets else [] %}
+      {% set away_outcome = outcomes | selectattr("name", "equalto", game.away_team) | first | default(none) %}
+      {% set home_outcome = outcomes | selectattr("name", "equalto", game.home_team) | first | default(none) %}
+    {% else %}
+      {% set outcomes = [] %}
+      {% set away_outcome = none %}
+      {% set home_outcome = none %}
+    {% endif %}
+    <div class="bg-slate-900 border border-slate-800 hover:border-slate-700
+                rounded-xl px-6 py-4 transition-colors">
+      <div class="flex items-center">
+
+        <!-- Away team -->
+        <div class="flex-1">
+          <div class="font-semibold text-lg leading-tight">{{ game.away_team }}</div>
+          {% if away_outcome %}
+          <div class="text-2xl font-bold tabular-nums mt-1
+                      {% if away_outcome.price > 0 %}text-green-400{% else %}text-slate-100{% endif %}">
+            {% if away_outcome.price > 0 %}+{% endif %}{{ away_outcome.price }}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Centre: bookmaker + time -->
+        <div class="text-center w-40 shrink-0">
+          <div class="text-slate-300 font-semibold text-base">
+            {{ book.title if book else "No odds" }}
+          </div>
+          <div class="text-xs text-slate-400 mt-1">
+            {% if game.commence_time %}
+              {{ game.commence_time[:10] }} {{ game.commence_time[11:16] }} UTC
+            {% else %}
+              TBD
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Home team -->
+        <div class="flex-1 text-right">
+          <div class="font-semibold text-lg leading-tight">{{ game.home_team }}</div>
+          {% if home_outcome %}
+          <div class="text-2xl font-bold tabular-nums mt-1
+                      {% if home_outcome.price > 0 %}text-green-400{% else %}text-slate-100{% endif %}">
+            {% if home_outcome.price > 0 %}+{% endif %}{{ home_outcome.price }}
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

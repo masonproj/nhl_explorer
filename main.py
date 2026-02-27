@@ -1,7 +1,11 @@
 import logging
+import os
 import time
 
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -65,6 +69,9 @@ STAT_CATEGORIES = {
 
 VALID_CONFERENCES = {"All", "Eastern", "Western"}
 VALID_LIMITS = {10, 20, 30, 50}
+
+ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
+ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/icehockey_nhl/odds"
 
 
 async def fetch(url: str, ttl: int = 300) -> dict:
@@ -191,4 +198,27 @@ async def roster(request: Request, team: str = "BOS"):
             "teams": TEAMS,
             "error": error,
         },
+    )
+
+
+@app.get("/odds", response_class=HTMLResponse)
+async def odds(request: Request):
+    if not ODDS_API_KEY:
+        return templates.TemplateResponse(
+            "partials/odds.html",
+            {"request": request, "games": [], "error": None, "no_key": True},
+        )
+    error = None
+    games: list = []
+    try:
+        data = await fetch(
+            f"{ODDS_API_URL}?apiKey={ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american",
+            ttl=300,
+        )
+        games = data if isinstance(data, list) else []
+    except Exception as e:
+        error = _api_error(e)
+    return templates.TemplateResponse(
+        "partials/odds.html",
+        {"request": request, "games": games, "error": error, "no_key": False},
     )
