@@ -1,0 +1,104 @@
+<div>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-2xl font-bold">Today's Games</h2>
+      {% if date %}<p class="text-slate-400 text-sm mt-0.5">{{ date }}</p>{% endif %}
+    </div>
+    <button class="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700
+                   text-slate-300 hover:text-white rounded-lg transition-colors"
+            hx-get="/scores" hx-target="#content" hx-swap="innerHTML">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0
+             0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+
+  {% if error %}
+  <div class="bg-red-950 border border-red-800 rounded-xl p-4 text-red-300 text-sm">
+    {{ error }}
+  </div>
+
+  {% elif not games %}
+  <div class="text-center py-20 text-slate-500">
+    <div class="text-5xl mb-4 select-none">🏒</div>
+    <p class="text-lg">No games scheduled today.</p>
+  </div>
+
+  {% else %}
+  <div class="grid gap-3">
+    {% for game in games %}
+    {% set away = game.awayTeam %}
+    {% set home = game.homeTeam %}
+    {% set state = game.gameState %}
+    <div class="bg-slate-900 border border-slate-800 hover:border-slate-700
+                rounded-xl px-6 py-4 transition-colors">
+      <div class="flex items-center">
+
+        <!-- Away -->
+        <div class="flex items-center gap-3 flex-1">
+          {% if away.logo %}
+          <img src="{{ away.logo }}" alt="{{ away.abbrev }}"
+               class="h-14 w-14 object-contain drop-shadow" />
+          {% endif %}
+          <div>
+            <div class="font-semibold text-lg leading-tight">
+              {{ away.placeName.default if away.placeName else away.name }}
+            </div>
+            <div class="text-slate-400 text-sm">{{ away.abbrev }}</div>
+          </div>
+        </div>
+
+        <!-- Score / Status -->
+        <div class="text-center w-40 shrink-0">
+          {% if state in ['LIVE', 'CRIT'] %}
+            <div class="text-3xl font-bold tabular-nums tracking-tight">
+              {{ away.score | default(0) }} – {{ home.score | default(0) }}
+            </div>
+            <div class="flex items-center justify-center gap-1.5 mt-1">
+              <span class="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse"></span>
+              <span class="text-xs text-green-400 font-medium">
+                P{{ game.period }}
+                {% if game.clock %}{{ game.clock.timeRemaining }}{% endif %}
+              </span>
+            </div>
+          {% elif state in ['FINAL', 'OFF'] %}
+            <div class="text-3xl font-bold tabular-nums tracking-tight">
+              {{ away.score | default(0) }} – {{ home.score | default(0) }}
+            </div>
+            <div class="text-xs text-slate-400 mt-1">Final</div>
+          {% else %}
+            <div class="text-slate-300 font-semibold text-xl">vs</div>
+            <div class="text-xs text-slate-400 mt-1">
+              {% if game.startTimeUTC %}
+                {{ game.startTimeUTC[:10] }}
+                {{ game.startTimeUTC[11:16] }} UTC
+              {% else %}
+                TBD
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Home -->
+        <div class="flex items-center gap-3 flex-1 justify-end">
+          <div class="text-right">
+            <div class="font-semibold text-lg leading-tight">
+              {{ home.placeName.default if home.placeName else home.name }}
+            </div>
+            <div class="text-slate-400 text-sm">{{ home.abbrev }}</div>
+          </div>
+          {% if home.logo %}
+          <img src="{{ home.logo }}" alt="{{ home.abbrev }}"
+               class="h-14 w-14 object-contain drop-shadow" />
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
