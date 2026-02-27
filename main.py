@@ -71,7 +71,7 @@ async def fetch(url: str, ttl: int = 300) -> dict:
     now = time.time()
     if url in _cache and now - _cache[url]["ts"] < ttl:
         return _cache[url]["data"]
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
         r = await client.get(url)
         r.raise_for_status()
         data = r.json()
