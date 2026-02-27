@@ -1,7 +1,7 @@
 {
   "name": "NHL Explorer",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  "postCreateCommand": "pip install -r requirements.txt && curl -fsSL https://claude.ai/install.sh | bash",
+  "postCreateCommand": "pip install -r requirements.txt && npm install -g @anthropic-ai/claude-code",
   "forwardPorts": [8000],
   "portsAttributes": {
     "8000": {
